@@ -6,6 +6,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL,
+  SystemProgram,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -26,6 +27,8 @@ import { getPayer, getRpcUrl, createKeypairFromFile } from "./utils";
 let connection: Connection;
 let payer: Keypair;
 let programId: PublicKey;
+let mintA: PublicKey;
+let mintB: PublicKey;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "tokenswap-keypair.json");
@@ -76,4 +79,69 @@ export async function checkProgramHashBeenDeployed(): Promise<void> {
     throw new Error(`Program is not executable`);
   }
   console.log(`Using program ${programId.toBase58()}`);
+}
+
+export async function swapToken(): Promise<void> {
+  const mintA = await createMint(
+    connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    9
+  );
+  const mintB = await createMint(
+    connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    9
+  );
+
+  const [swapBank, bump] = await PublicKey.findProgramAddress(
+    [Buffer.from("swap_bank"), mintA.toBuffer(), mintB.toBuffer()],
+    programId
+  );
+  console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: payer.publicKey,
+        isSigner: true,
+        isWritable: true,
+      },
+      {
+        pubkey: swapBank,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: mintA,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: mintB,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+    programId,
+    data: Buffer.alloc(0),
+  });
+
+  console.log("get here");
+  const swapSig = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer]
+  );
+  console.log(
+    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+  );
 }

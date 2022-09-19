@@ -2,12 +2,14 @@ import {
   checkProgramHashBeenDeployed,
   establishConnection,
   establishPayer,
-} from "./tokenswap";
+  swapToken,
+} from "./swapbank";
 
 async function main() {
   await establishConnection();
   await establishPayer();
   await checkProgramHashBeenDeployed();
+  await swapToken();
   console.log("Success");
 }
 
