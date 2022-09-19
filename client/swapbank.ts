@@ -7,6 +7,7 @@ import {
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL,
   SystemProgram,
+  SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -14,6 +15,7 @@ import {
   createAssociatedTokenAccount,
   createMint,
   createTransferInstruction,
+  getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
   mintTo,
   TOKEN_PROGRAM_ID,
@@ -103,6 +105,28 @@ export async function swapToken(): Promise<void> {
   );
   console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
 
+  const [vaultA, vaultABump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("swap_bank"),
+      payer.publicKey.toBuffer(),
+      mintA.toBuffer(),
+      swapBank.toBuffer(),
+    ],
+    programId
+  );
+  console.log(`vaultA pda: ${vaultA.toBase58()}, vaultA bump: ${vaultABump}`);
+
+  const [vaultB, vaultBBump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("swap_bank"),
+      payer.publicKey.toBuffer(),
+      mintB.toBuffer(),
+      swapBank.toBuffer(),
+    ],
+    programId
+  );
+  console.log(`vaultB pda: ${vaultB.toBase58()}, vaultB bump: ${vaultBBump}`);
+
   const instruction = new TransactionInstruction({
     keys: [
       {
@@ -118,10 +142,30 @@ export async function swapToken(): Promise<void> {
       {
         pubkey: mintA,
         isSigner: false,
-        isWritable: false,
+        isWritable: true,
       },
       {
         pubkey: mintB,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: vaultA,
+        isSigner: false,
+        isWritable: true, //double check
+      },
+      {
+        pubkey: vaultB,
+        isSigner: false,
+        isWritable: true, //double check
+      },
+      {
+        pubkey: TOKEN_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
         isSigner: false,
         isWritable: false,
       },
@@ -130,12 +174,16 @@ export async function swapToken(): Promise<void> {
         isSigner: false,
         isWritable: false,
       },
+      {
+        pubkey: SYSVAR_RENT_PUBKEY,
+        isSigner: false,
+        isWritable: false,
+      },
     ],
     programId,
     data: Buffer.alloc(0),
   });
 
-  console.log("get here");
   const swapSig = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
