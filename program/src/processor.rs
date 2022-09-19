@@ -1,5 +1,6 @@
 use crate::errors::SwapBankError;
 use crate::state;
+use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -183,6 +184,15 @@ impl Processor {
                 token_program_id.clone(),
             ],
         )?;
+
+        // * Allocate data to swapbank
+        let swapbank_info = state::SwapBankAccount {
+            admin: *payer.key,
+            vault_a: *vault_a.key,
+            vault_b: *vault_b.key,
+        };
+        let swapbank_data = &mut *swap_bank.data.borrow_mut();
+        swapbank_info.serialize(swapbank_data)?;
 
         Ok(())
     }
