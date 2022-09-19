@@ -10,6 +10,7 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import {
+  Account,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createAccount,
   createAssociatedTokenAccount,
@@ -25,12 +26,19 @@ import fs from "mz/fs";
 import path from "path";
 
 import { getPayer, getRpcUrl, createKeypairFromFile } from "./utils";
+import { BN } from "bn.js";
 
 let connection: Connection;
 let payer: Keypair;
+let payerAta: Account;
 let programId: PublicKey;
 let mintA: PublicKey;
 let mintB: PublicKey;
+let vaultA: PublicKey;
+let vaultB: PublicKey;
+let vaultAAta: Account;
+let vaultBAta: Account;
+let swapBank: PublicKey;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "tokenswap-keypair.json");
@@ -83,15 +91,8 @@ export async function checkProgramHashBeenDeployed(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 }
 
-export async function swapToken(): Promise<void> {
-  const mintA = await createMint(
-    connection,
-    payer,
-    payer.publicKey,
-    payer.publicKey,
-    9
-  );
-  const mintB = await createMint(
+export async function initialize(): Promise<void> {
+  mintA = await createMint(
     connection,
     payer,
     payer.publicKey,
@@ -99,10 +100,37 @@ export async function swapToken(): Promise<void> {
     9
   );
 
-  const [swapBank, bump] = await PublicKey.findProgramAddress(
+  payerAta = await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mintA,
+    payer.publicKey
+  );
+  await mintTo(
+    connection,
+    payer,
+    mintA,
+    payerAta.address,
+    payer,
+    1e9 * LAMPORTS_PER_SOL
+  );
+  console.log(
+    `mint ${1e9} SOL to payer Token Account Address ${payerAta.address.toBase58()}`
+  );
+
+  mintB = await createMint(
+    connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    9
+  );
+
+  const [swapBankPda, bump] = await PublicKey.findProgramAddress(
     [Buffer.from("swap_bank"), mintA.toBuffer(), mintB.toBuffer()],
     programId
   );
+  swapBank = swapBankPda;
   console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
 
   const [vaultA, vaultABump] = await PublicKey.findProgramAddress(
@@ -116,6 +144,25 @@ export async function swapToken(): Promise<void> {
   );
   console.log(`vaultA pda: ${vaultA.toBase58()}, vaultA bump: ${vaultABump}`);
 
+  vaultAAta = await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mintA,
+    vaultA,
+    true
+  );
+  await mintTo(
+    connection,
+    payer,
+    mintA,
+    vaultAAta.address,
+    payer,
+    2e9 * LAMPORTS_PER_SOL
+  );
+  console.log(
+    `mint ${2e9} SOL to vautA Token Account Address ${vaultAAta.address.toBase58()}`
+  );
+
   const [vaultB, vaultBBump] = await PublicKey.findProgramAddress(
     [
       Buffer.from("swap_bank"),
@@ -127,6 +174,11 @@ export async function swapToken(): Promise<void> {
   );
   console.log(`vaultB pda: ${vaultB.toBase58()}, vaultB bump: ${vaultBBump}`);
 
+  const instruction1 = Buffer.from(Uint8Array.of(0));
+  const instruction2 = Buffer.from(
+    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
+  );
+  const instructionData = instruction2;
   const instruction = new TransactionInstruction({
     keys: [
       {
@@ -181,7 +233,30 @@ export async function swapToken(): Promise<void> {
       },
     ],
     programId,
-    data: Buffer.alloc(0),
+    data: instructionData,
+  });
+
+  const swapSig = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer]
+  );
+  console.log(
+    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+  );
+}
+
+export async function swapToken(): Promise<void> {
+  const instructionData = Buffer.from(
+    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
+  );
+
+  console.log("vaultA ATA", vaultAAta.address.toBase58());
+
+  const instruction = new TransactionInstruction({
+    keys: [],
+    programId,
+    data: instructionData,
   });
 
   const swapSig = await sendAndConfirmTransaction(
