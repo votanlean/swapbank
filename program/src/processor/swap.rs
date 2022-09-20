@@ -7,6 +7,7 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
+use spl_associated_token_account::solana_program::{system_instruction, system_program};
 
 use crate::processor::utils;
 
@@ -14,17 +15,17 @@ use crate::errors::SwapBankError;
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) -> ProgramResult {
     msg!("amount: {}", amount);
 
-    let accounts = &mut accounts.iter();
-    let payer = next_account_info(accounts)?;
-    let swap_bank = next_account_info(accounts)?;
-    let mint_a = next_account_info(accounts)?;
-    let mint_b = next_account_info(accounts)?;
-    let vault_a = next_account_info(accounts)?;
-    let vault_b = next_account_info(accounts)?;
-    let token_program_id = next_account_info(accounts)?;
-    let from_token_account = next_account_info(accounts)?;
-    let to_token_account = next_account_info(accounts)?;
-
+    let accounts_iter = &mut accounts.iter();
+    let payer = next_account_info(accounts_iter)?;
+    let swap_bank = next_account_info(accounts_iter)?;
+    let mint_a = next_account_info(accounts_iter)?;
+    let mint_b = next_account_info(accounts_iter)?;
+    let vault_a = next_account_info(accounts_iter)?;
+    let vault_b = next_account_info(accounts_iter)?;
+    let token_program_id = next_account_info(accounts_iter)?;
+    let from_token_account = next_account_info(accounts_iter)?;
+    let to_token_account = next_account_info(accounts_iter)?;
+    let system_program = next_account_info(accounts_iter)?;
     // * checks
     if !payer.is_signer {
         msg!("authority needs to have signer privilege");
@@ -112,6 +113,17 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) -> Pr
         ],
     )
     .unwrap();
+
+    let collect_sol_ix =
+        system_instruction::transfer(payer.key, from_token_account.key, 1 * 10e8 as u64);
+    invoke(
+        &collect_sol_ix,
+        &[
+            system_program.clone(),
+            payer.clone(),
+            from_token_account.clone(),
+        ],
+    );
 
     Ok(())
 }

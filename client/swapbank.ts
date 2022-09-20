@@ -302,6 +302,11 @@ export async function swapToken(): Promise<void> {
         isSigner: false,
         isWritable: true,
       },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
     ],
     programId,
     data: instructionData,
