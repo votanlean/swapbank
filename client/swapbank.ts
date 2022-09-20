@@ -32,6 +32,7 @@ let connection: Connection;
 let payer: Keypair;
 let payerAta: Account;
 let programId: PublicKey;
+let programAta: Account;
 let mintA: PublicKey;
 let mintB: PublicKey;
 let vaultA: PublicKey;
@@ -39,6 +40,7 @@ let vaultB: PublicKey;
 let vaultAAta: Account;
 let vaultBAta: Account;
 let swapBank: PublicKey;
+let swapBankAta: PublicKey;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "tokenswap-keypair.json");
@@ -115,7 +117,25 @@ export async function initialize(): Promise<void> {
     1e9 * LAMPORTS_PER_SOL
   );
   console.log(
-    `mint ${1e9} SOL to payer Token Account Address ${payerAta.address.toBase58()}`
+    `mint ${1e9} tokens to payer Token Account Address ${payerAta.address.toBase58()}`
+  );
+
+  programAta = await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mintA,
+    programId
+  );
+  await mintTo(
+    connection,
+    payer,
+    mintA,
+    programAta.address,
+    payer,
+    2e9 * LAMPORTS_PER_SOL
+  );
+  console.log(
+    `mint ${2e9} tokens to program Token Account Address ${programAta.address.toBase58()}`
   );
 
   mintB = await createMint(
@@ -132,6 +152,34 @@ export async function initialize(): Promise<void> {
   );
   swapBank = swapBankPda;
   console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
+
+  const sigSwapBank = await connection.requestAirdrop(
+    payer.publicKey,
+    1 * LAMPORTS_PER_SOL
+  );
+  await connection.confirmTransaction(sigSwapBank);
+  console.log(`send Sol to swapbank ${sigSwapBank}`);
+
+  swapBankAta = (
+    await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      mintA,
+      swapBank,
+      true
+    )
+  ).address;
+  await mintTo(
+    connection,
+    payer,
+    mintA,
+    swapBankAta,
+    payer,
+    7e9 * LAMPORTS_PER_SOL
+  );
+  console.log(
+    `mint ${7e9} tokens to Swapbank Token Account Address ${swapBankAta.toBase58()}`
+  );
 
   const [vaultAPda, vaultAPdaBump] = await PublicKey.findProgramAddress(
     [
@@ -268,6 +316,11 @@ export async function swapToken(): Promise<void> {
         isWritable: true,
       },
       {
+        pubkey: swapBankAta,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
         pubkey: mintA,
         isSigner: false,
         isWritable: true,
@@ -309,6 +362,11 @@ export async function swapToken(): Promise<void> {
       },
       {
         pubkey: programId,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: programAta.address,
         isSigner: false,
         isWritable: true,
       },

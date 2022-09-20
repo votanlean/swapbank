@@ -17,7 +17,7 @@ use solana_program::{
     sysvar::Sysvar,
 };
 pub mod initialize;
-pub mod swap;
+pub mod swap_sol;
 pub mod utils;
 
 pub struct Processor {}
@@ -36,7 +36,7 @@ impl Processor {
             }
             SwapBankIntruction::Swap { data } => {
                 msg!("Swap");
-                swap::process(program_id, accounts, data)?;
+                swap_sol::process(program_id, accounts, data)?;
             }
         }
 
