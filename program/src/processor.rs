@@ -17,7 +17,9 @@ use solana_program::{
     sysvar::Sysvar,
 };
 pub mod initialize;
-pub mod swap_sol;
+pub mod legacy_initialize;
+pub mod swap_sol_to_token;
+pub mod swap_token_to_sol;
 pub mod utils;
 
 pub struct Processor {}
@@ -31,12 +33,20 @@ impl Processor {
         let instruction = SwapBankIntruction::unpack(instruction_data)?;
         match instruction {
             SwapBankIntruction::Initialize => {
-                msg!("Initialize Swap Bank");
-                initialize::process(&program_id, &accounts)?;
+                msg!("Initialize...");
+                initialize::process(program_id, accounts)?;
             }
-            SwapBankIntruction::Swap { data } => {
-                msg!("Swap");
-                swap_sol::process(program_id, accounts, data)?;
+            SwapBankIntruction::SwapSolToToken { data } => {
+                msg!("Swap token to SOL");
+                swap_sol_to_token::process(program_id, accounts, data)?;
+            }
+            SwapBankIntruction::SwapTokenToSol { data } => {
+                msg!("Swap SOL to token");
+                swap_token_to_sol::process(program_id, accounts, data)?;
+            }
+            SwapBankIntruction::LegacyInitialize => {
+                msg!("Initialize Swap Bank");
+                legacy_initialize::process(&program_id, &accounts)?;
             }
         }
 

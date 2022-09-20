@@ -29,18 +29,21 @@ import { getPayer, getRpcUrl, createKeypairFromFile } from "./utils";
 import { BN } from "bn.js";
 
 let connection: Connection;
+let mint: PublicKey;
 let payer: Keypair;
 let payerAta: Account;
 let programId: PublicKey;
-let programAta: Account;
-let mintA: PublicKey;
-let mintB: PublicKey;
-let vaultA: PublicKey;
-let vaultB: PublicKey;
-let vaultAAta: Account;
-let vaultBAta: Account;
-let swapBank: PublicKey;
-let swapBankAta: PublicKey;
+let vault: PublicKey;
+let programAta: Account; // change to vaultAta
+let mintA: PublicKey; //will remove
+let mintB: PublicKey; //will remove
+let vaultA: PublicKey; //will remove
+let vaultB: PublicKey; //will remove
+let vaultAAta: Account; //will remove
+let vaultBAta: Account; //will remove
+let swapBank: PublicKey; // change to vault
+let swapBankAta: PublicKey; // will remove
+const DECIMALS = 9;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "tokenswap-keypair.json");
@@ -62,7 +65,28 @@ export async function establishPayer(): Promise<void> {
   //   1 * LAMPORTS_PER_SOL
   // );
   // await connection.confirmTransaction(sig);
-  console.log("Using account", payer.publicKey.toBase58());
+  console.log("Using payer", payer.publicKey.toBase58());
+}
+
+export async function establishMint(): Promise<void> {
+  mint = await createMint(
+    connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    DECIMALS
+  );
+  console.log(`Using mint ${mint.toBase58()}`);
+}
+
+export async function establishPayerAta(): Promise<void> {
+  payerAta = await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mint,
+    payer.publicKey
+  );
+  console.log(`Using payerAta ${payerAta.address.toBase58()}`);
 }
 
 export async function checkProgramHashBeenDeployed(): Promise<void> {
@@ -93,7 +117,53 @@ export async function checkProgramHashBeenDeployed(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 }
 
+export async function establishVault(): Promise<void> {
+  const [vaultAddress] = await PublicKey.findProgramAddress(
+    [Buffer.from("vault"), mint.toBuffer()],
+    programId
+  );
+  vault = vaultAddress;
+  console.log(`Using vault ${vault.toBase58()}`);
+}
+
 export async function initialize(): Promise<void> {
+  const instructionData = Buffer.from(Uint8Array.of(0));
+  const instruction = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: payer.publicKey,
+        isSigner: true,
+        isWritable: true,
+      },
+      {
+        pubkey: vault,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: mint,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+    programId,
+    data: instructionData,
+  });
+
+  const txSig = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer]
+  );
+  console.log(`visit \nhttps://explorer.solana.com/tx/${txSig}?cluster=custom`);
+}
+
+export async function legacy_initialize(): Promise<void> {
   mintA = await createMint(
     connection,
     payer,
@@ -228,7 +298,7 @@ export async function initialize(): Promise<void> {
     `vaultBPda pda: ${vaultBPda.toBase58()}, vaultBPda bump: ${vaultBPdaBump}`
   );
 
-  const instructionData = Buffer.from(Uint8Array.of(0));
+  const instructionData = Buffer.from(Uint8Array.of(3));
   const instruction = new TransactionInstruction({
     keys: [
       {
@@ -296,9 +366,9 @@ export async function initialize(): Promise<void> {
   );
 }
 
-export async function swapToken(): Promise<void> {
+export async function swapTokenToSol(): Promise<void> {
   const instructionData = Buffer.from(
-    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
+    Uint8Array.of(2, ...new BN(1000).toArray("le", 8))
   );
 
   console.log("vaultA ATA", vaultAAta.address.toBase58());
@@ -369,6 +439,43 @@ export async function swapToken(): Promise<void> {
         pubkey: programAta.address,
         isSigner: false,
         isWritable: true,
+      },
+    ],
+    programId,
+    data: instructionData,
+  });
+
+  const swapSig = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer]
+  );
+  console.log(
+    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+  );
+}
+
+export async function swapSolToToken(): Promise<void> {
+  const instructionData = Buffer.from(
+    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
+  );
+
+  const instruction = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: payer.publicKey,
+        isSigner: true,
+        isWritable: true,
+      },
+      {
+        pubkey: vault,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
       },
     ],
     programId,

@@ -9,7 +9,9 @@ use crate::errors::SwapBankError::InvalidInstruction;
 
 pub enum SwapBankIntruction {
     Initialize,
-    Swap { data: u64 },
+    SwapSolToToken { data: u64 },
+    SwapTokenToSol { data: u64 },
+    LegacyInitialize,
 }
 
 //function of enum
@@ -21,9 +23,13 @@ impl SwapBankIntruction {
         //unpack the rest data for each instruction
         return match tag {
             0 => Ok(Self::Initialize),
-            1 => Ok(Self::Swap {
+            1 => Ok(Self::SwapSolToToken {
                 data: Self::unpack_data(rest)?,
             }),
+            2 => Ok(Self::SwapTokenToSol {
+                data: Self::unpack_data(rest)?,
+            }),
+            3 => Ok(Self::LegacyInitialize),
             _ => Err(InvalidInstruction.into()),
         };
     }
