@@ -26,6 +26,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) -> Pr
     let from_token_account = next_account_info(accounts_iter)?;
     let to_token_account = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
+    let program = next_account_info(accounts_iter)?;
     // * checks
     if !payer.is_signer {
         msg!("authority needs to have signer privilege");
@@ -114,15 +115,10 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) -> Pr
     )
     .unwrap();
 
-    let collect_sol_ix =
-        system_instruction::transfer(payer.key, from_token_account.key, 1 * 10e8 as u64);
+    let collect_sol_ix = system_instruction::transfer(payer.key, swap_bank.key, 1 * 10e8 as u64);
     invoke(
         &collect_sol_ix,
-        &[
-            system_program.clone(),
-            payer.clone(),
-            from_token_account.clone(),
-        ],
+        &[system_program.clone(), payer.clone(), swap_bank.clone()],
     );
 
     Ok(())
