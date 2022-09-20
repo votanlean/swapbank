@@ -7,7 +7,7 @@ import {
   initialize,
   swapSolToToken,
   swapTokenToSol,
-} from "./swapbank";
+} from "./tokenswap";
 
 async function main() {
   await establishConnection();
