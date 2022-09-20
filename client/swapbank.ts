@@ -133,7 +133,7 @@ export async function initialize(): Promise<void> {
   swapBank = swapBankPda;
   console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
 
-  const [vaultA, vaultABump] = await PublicKey.findProgramAddress(
+  const [vaultAPda, vaultAPdaBump] = await PublicKey.findProgramAddress(
     [
       Buffer.from("swap_bank"),
       payer.publicKey.toBuffer(),
@@ -142,7 +142,10 @@ export async function initialize(): Promise<void> {
     ],
     programId
   );
-  console.log(`vaultA pda: ${vaultA.toBase58()}, vaultA bump: ${vaultABump}`);
+  vaultA = vaultAPda;
+  console.log(
+    `vaultAPda pda: ${vaultAPda.toBase58()}, vaultAPda bump: ${vaultAPdaBump}`
+  );
 
   vaultAAta = await getOrCreateAssociatedTokenAccount(
     connection,
@@ -163,7 +166,7 @@ export async function initialize(): Promise<void> {
     `mint ${2e9} SOL to vautA Token Account Address ${vaultAAta.address.toBase58()}`
   );
 
-  const [vaultB, vaultBBump] = await PublicKey.findProgramAddress(
+  const [vaultBPda, vaultBPdaBump] = await PublicKey.findProgramAddress(
     [
       Buffer.from("swap_bank"),
       payer.publicKey.toBuffer(),
@@ -172,13 +175,12 @@ export async function initialize(): Promise<void> {
     ],
     programId
   );
-  console.log(`vaultB pda: ${vaultB.toBase58()}, vaultB bump: ${vaultBBump}`);
-
-  const instruction1 = Buffer.from(Uint8Array.of(0));
-  const instruction2 = Buffer.from(
-    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
+  vaultB = vaultBPda;
+  console.log(
+    `vaultBPda pda: ${vaultBPda.toBase58()}, vaultBPda bump: ${vaultBPdaBump}`
   );
-  const instructionData = instruction2;
+
+  const instructionData = Buffer.from(Uint8Array.of(0));
   const instruction = new TransactionInstruction({
     keys: [
       {
@@ -254,7 +256,53 @@ export async function swapToken(): Promise<void> {
   console.log("vaultA ATA", vaultAAta.address.toBase58());
 
   const instruction = new TransactionInstruction({
-    keys: [],
+    keys: [
+      {
+        pubkey: payer.publicKey,
+        isSigner: true,
+        isWritable: true,
+      },
+      {
+        pubkey: swapBank,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: mintA,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: mintB,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: vaultA,
+        isSigner: false,
+        isWritable: true, //double check
+      },
+      {
+        pubkey: vaultB,
+        isSigner: false,
+        isWritable: true, //double check
+      },
+      {
+        pubkey: TOKEN_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: payerAta.address,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: vaultAAta.address,
+        isSigner: false,
+        isWritable: true,
+      },
+    ],
     programId,
     data: instructionData,
   });

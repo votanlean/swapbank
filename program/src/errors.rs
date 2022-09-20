@@ -4,14 +4,20 @@ use solana_program::{
 };
 use thiserror::Error;
 
-#[derive(Error, Debug, Clone, Eq, Copy, FromPrimitive, PartialEq)]
+#[derive(Error, Debug, Clone, Copy, FromPrimitive)]
 pub enum SwapBankError {
+    #[error("Invalid Instruction")]
+    InvalidInstruction,
     #[error("Invalid Account address.")]
     InvalidAccountAddress,
     #[error("Account is not writable")]
     AccountIsNotWritable,
     #[error("Account is not signer")]
     AccountIsNotSigner,
+    #[error("Invalid Mint")]
+    InvalidMint,
+    #[error("Unique Mint")]
+    UniqueMintAccounts,
 }
 
 impl From<SwapBankError> for ProgramError {

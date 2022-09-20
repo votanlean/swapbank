@@ -18,6 +18,7 @@ use solana_program::{
 };
 pub mod initialize;
 pub mod swap;
+pub mod utils;
 
 pub struct Processor {}
 impl Processor {
@@ -27,19 +28,15 @@ impl Processor {
         instruction_data: &[u8],
     ) -> ProgramResult {
         msg!("process instructions");
-        let instruction = SwapBankIntruction::try_from_slice(instruction_data).map_err(|err| {
-            msg!("invalid instruction data. cause {:}", err);
-            ProgramError::InvalidInstructionData
-        })?;
-        msg!("instruction: {:?}", instruction);
+        let instruction = SwapBankIntruction::unpack(instruction_data)?;
         match instruction {
-            SwapBankIntruction::Initialize {} => {
+            SwapBankIntruction::Initialize => {
                 msg!("Initialize Swap Bank");
                 initialize::process(&program_id, &accounts)?;
             }
-            SwapBankIntruction::Swap { amount } => {
+            SwapBankIntruction::Swap { data } => {
                 msg!("Swap");
-                swap::process(program_id, accounts, amount)?;
+                swap::process(program_id, accounts, data)?;
             }
         }
 
