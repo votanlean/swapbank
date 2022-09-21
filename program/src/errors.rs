@@ -5,7 +5,7 @@ use solana_program::{
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, Copy, FromPrimitive)]
-pub enum SwapBankError {
+pub enum TokenSwapError {
     #[error("Invalid Instruction")]
     InvalidInstruction,
     #[error("Invalid Account address.")]
@@ -20,13 +20,13 @@ pub enum SwapBankError {
     UniqueMintAccounts,
 }
 
-impl From<SwapBankError> for ProgramError {
-    fn from(e: SwapBankError) -> Self {
+impl From<TokenSwapError> for ProgramError {
+    fn from(e: TokenSwapError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
 
-impl<T> DecodeError<T> for SwapBankError {
+impl<T> DecodeError<T> for TokenSwapError {
     fn type_of() -> &'static str {
         "SwapBank error"
     }

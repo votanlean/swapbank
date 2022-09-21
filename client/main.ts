@@ -7,6 +7,7 @@ import {
   establishVault,
   establishVaultAta,
   initialize,
+  mintToPayerAta,
   mintToVaultAta,
   swapSolToToken,
   swapTokenToSol,
@@ -17,6 +18,7 @@ async function main() {
   await establishPayer();
   await establishMint();
   await establishPayerAta();
+  await mintToPayerAta();
   await checkProgramHashBeenDeployed();
   await establishVault();
   await establishVaultAta();

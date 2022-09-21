@@ -10,4 +10,4 @@ pub struct SwapBankAccount {
     pub vault_b: Pubkey,
 }
 
-pub const SWAP_BANK_ACCOUNT_LEN: usize = size_of::<Pubkey>() * 3;
+pub const TOKEN_SWAP_ACCOUNT_LEN: usize = size_of::<Pubkey>() * 3;

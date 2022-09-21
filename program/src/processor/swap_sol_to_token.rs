@@ -8,7 +8,7 @@ use solana_program::{
 };
 use spl_associated_token_account::solana_program::system_instruction;
 
-use crate::errors::SwapBankError;
+use crate::errors::TokenSwapError;
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], lamports: u64) -> ProgramResult {
     msg!("swap sol to token, lamports: {}", lamports);
     let accounts_iter = &mut accounts.iter();
@@ -21,11 +21,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], lamports: u64) -> 
     let token_program_id = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
 
-    let (vault_pda, vault_bump_seed) =
+    let (vault_pda, vault_bump_seedma) =
         Pubkey::find_program_address(&[b"vault", mint.key.as_ref()], program_id);
     if vault_pda != *vault.key {
         msg!("Invalid vault account");
-        return Err(SwapBankError::InvalidAccountAddress.into());
+        return Err(TokenSwapError::InvalidAccountAddress.into());
     }
 
     msg!("transfer SOL from payer to program");

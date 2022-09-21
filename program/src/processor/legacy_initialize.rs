@@ -1,4 +1,4 @@
-use crate::errors::SwapBankError;
+use crate::errors::TokenSwapError;
 use crate::state;
 use borsh::BorshSerialize;
 use solana_program::{
@@ -29,11 +29,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     if !payer.is_signer {
         msg!("payer have to be a signer");
-        return Err(SwapBankError::AccountIsNotSigner.into());
+        return Err(TokenSwapError::AccountIsNotSigner.into());
     }
     if !swap_bank.is_writable {
         msg!("swap bank account needs to be writable");
-        return Err(SwapBankError::AccountIsNotWritable.into());
+        return Err(TokenSwapError::AccountIsNotWritable.into());
     }
 
     let (swap_bank_pda, swap_bank_bump) = Pubkey::find_program_address(
@@ -42,7 +42,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     );
     if swap_bank_pda != *swap_bank.key {
         msg!("Invalid swap_bank account");
-        return Err(SwapBankError::InvalidAccountAddress.into());
+        return Err(TokenSwapError::InvalidAccountAddress.into());
     }
 
     let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
@@ -57,7 +57,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     if vault_a_pda != *vault_a.key {
         msg!("Invalid vault_a account");
-        return Err(SwapBankError::InvalidAccountAddress.into());
+        return Err(TokenSwapError::InvalidAccountAddress.into());
     }
     msg!(
         "vault_a_pda: {}, vault_a: {}",
@@ -77,7 +77,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     if vault_b_pda != *vault_b.key {
         msg!("Invalid vault_b account");
-        return Err(SwapBankError::InvalidAccountAddress.into());
+        return Err(TokenSwapError::InvalidAccountAddress.into());
     }
     msg!(
         "vault_b_pda: {}, vault_b: {}",
@@ -90,8 +90,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         &create_account(
             &payer.key,
             &swap_bank.key,
-            Rent::get()?.minimum_balance(state::SWAP_BANK_ACCOUNT_LEN),
-            state::SWAP_BANK_ACCOUNT_LEN as u64,
+            Rent::get()?.minimum_balance(state::TOKEN_SWAP_ACCOUNT_LEN),
+            state::TOKEN_SWAP_ACCOUNT_LEN as u64,
             program_id,
         ),
         &[payer.clone(), system_program.clone(), swap_bank.clone()],

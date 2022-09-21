@@ -1,4 +1,4 @@
-use crate::errors::SwapBankError;
+use crate::errors::TokenSwapError;
 use crate::instruction;
 use crate::instruction::SwapBankIntruction;
 use crate::state;
@@ -20,7 +20,6 @@ pub mod initialize;
 pub mod legacy_initialize;
 pub mod swap_sol_to_token;
 pub mod swap_token_to_sol;
-pub mod utils;
 
 pub struct Processor {}
 impl Processor {
@@ -54,7 +53,7 @@ impl Processor {
     }
 }
 
-impl PrintProgramError for SwapBankError {
+impl PrintProgramError for TokenSwapError {
     fn print<E>(&self)
     where
         E: 'static

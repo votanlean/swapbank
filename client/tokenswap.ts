@@ -29,6 +29,7 @@ let programId: PublicKey;
 let vault: PublicKey;
 let vaultAta: Account;
 const DECIMALS = 9;
+const SOL_AMOUNT_TO_SWAP = 0.1;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "tokenswap-keypair.json");
@@ -44,13 +45,23 @@ export async function establishPayer(): Promise<void> {
   if (!payer) {
     payer = await getPayer();
   }
-  /* Request airdrop if need */
-  // const sig = await connection.requestAirdrop(
-  //   payer.publicKey,
-  //   1 * LAMPORTS_PER_SOL
-  // );
-  // await connection.confirmTransaction(sig);
+
+  await airdropSolIfNeeded(payer.publicKey);
   console.log("Using payer", payer.publicKey.toBase58());
+}
+
+export async function airdropSolIfNeeded(benificier: PublicKey) {
+  const balance = await connection.getBalance(benificier);
+  console.log("Current balance is", balance / LAMPORTS_PER_SOL);
+  if (balance < LAMPORTS_PER_SOL) {
+    console.log("Airdropping 1 SOL...");
+    const sig = await connection.requestAirdrop(benificier, LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(sig);
+    console.log(
+      "Current balance after airdrop: ",
+      (await connection.getBalance(benificier)) / LAMPORTS_PER_SOL
+    );
+  }
 }
 
 export async function establishMint(): Promise<void> {
@@ -72,6 +83,18 @@ export async function establishPayerAta(): Promise<void> {
     payer.publicKey
   );
   console.log(`Using payerAta ${payerAta.address.toBase58()}`);
+}
+
+export async function mintToPayerAta(): Promise<void> {
+  await mintTo(
+    connection,
+    payer,
+    mint,
+    payerAta.address,
+    payer,
+    1000 * LAMPORTS_PER_SOL
+  );
+  console.log(`Mint 1000 tokens to payerAta ${payerAta.address.toBase58()}`);
 }
 
 export async function checkProgramHashBeenDeployed(): Promise<void> {
@@ -171,11 +194,16 @@ export async function initialize(): Promise<void> {
   console.log(
     `Finish initialize, more info: \nhttps://explorer.solana.com/tx/${txSig}?cluster=custom`
   );
+
+  await airdropSolIfNeeded(vault); //airdrop after create vault on-chain
 }
 
 export async function swapSolToToken(): Promise<void> {
   const instructionData = Buffer.from(
-    Uint8Array.of(1, ...new BN(0.1 * LAMPORTS_PER_SOL).toArray("le", 8))
+    Uint8Array.of(
+      1,
+      ...new BN(SOL_AMOUNT_TO_SWAP * LAMPORTS_PER_SOL).toArray("le", 8)
+    )
   );
 
   const instruction = new TransactionInstruction({
@@ -237,10 +265,11 @@ export async function swapSolToToken(): Promise<void> {
 
 export async function swapTokenToSol(): Promise<void> {
   const instructionData = Buffer.from(
-    Uint8Array.of(2, ...new BN(1000).toArray("le", 8))
+    Uint8Array.of(
+      2,
+      ...new BN(SOL_AMOUNT_TO_SWAP * 10 * LAMPORTS_PER_SOL).toArray("le", 8)
+    )
   );
-
-  console.log("vaultA ATA", vaultAAta.address.toBase58());
 
   const instruction = new TransactionInstruction({
     keys: [
@@ -250,64 +279,34 @@ export async function swapTokenToSol(): Promise<void> {
         isWritable: true,
       },
       {
-        pubkey: swapBank,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: swapBankAta,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: mintA,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: mintB,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: vaultA,
-        isSigner: false,
-        isWritable: true, //double check
-      },
-      {
-        pubkey: vaultB,
-        isSigner: false,
-        isWritable: true, //double check
-      },
-      {
-        pubkey: TOKEN_PROGRAM_ID,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
         pubkey: payerAta.address,
         isSigner: false,
         isWritable: true,
       },
       {
-        pubkey: vaultAAta.address,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
         pubkey: programId,
         isSigner: false,
-        isWritable: false,
+        isWritable: true,
       },
       {
-        pubkey: programAta.address,
+        pubkey: mint,
         isSigner: false,
         isWritable: true,
+      },
+      {
+        pubkey: vault,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: vaultAta.address,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: TOKEN_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
       },
     ],
     programId,

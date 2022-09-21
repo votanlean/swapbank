@@ -5,7 +5,7 @@
 use solana_program::program_error::ProgramError;
 use std::convert::TryInto;
 
-use crate::errors::SwapBankError::InvalidInstruction;
+use crate::errors::TokenSwapError::InvalidInstruction;
 
 pub enum SwapBankIntruction {
     Initialize,

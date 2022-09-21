@@ -1,4 +1,4 @@
-use crate::errors::SwapBankError;
+use crate::errors::TokenSwapError;
 use crate::state;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -23,7 +23,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     if vault_pda != *vault.key {
         msg!("Invalid vault account");
-        return Err(SwapBankError::InvalidAccountAddress.into());
+        return Err(TokenSwapError::InvalidAccountAddress.into());
     }
 
     msg!("create vault {} ...", vault.key.to_string());
@@ -31,8 +31,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         &create_account(
             &payer.key,
             &vault.key,
-            Rent::get()?.minimum_balance(state::SWAP_BANK_ACCOUNT_LEN),
-            state::SWAP_BANK_ACCOUNT_LEN as u64,
+            Rent::get()?.minimum_balance(state::TOKEN_SWAP_ACCOUNT_LEN),
+            state::TOKEN_SWAP_ACCOUNT_LEN as u64,
             program_id,
         ),
         &[payer.clone(), system_program.clone(), vault.clone()],
