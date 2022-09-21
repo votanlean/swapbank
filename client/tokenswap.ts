@@ -7,20 +7,13 @@ import {
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import {
   Account,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAccount,
-  createAssociatedTokenAccount,
   createMint,
-  createTransferInstruction,
-  getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
   mintTo,
   TOKEN_PROGRAM_ID,
-  transfer,
 } from "@solana/spl-token";
 import fs from "mz/fs";
 import path from "path";
@@ -34,15 +27,7 @@ let payer: Keypair;
 let payerAta: Account;
 let programId: PublicKey;
 let vault: PublicKey;
-let programAta: Account; // change to vaultAta
-let mintA: PublicKey; //will remove
-let mintB: PublicKey; //will remove
-let vaultA: PublicKey; //will remove
-let vaultB: PublicKey; //will remove
-let vaultAAta: Account; //will remove
-let vaultBAta: Account; //will remove
-let swapBank: PublicKey; // change to vault
-let swapBankAta: PublicKey; // will remove
+let vaultAta: Account;
 const DECIMALS = 9;
 const PROGRAM_PATH = path.resolve(__dirname, "../dist/program");
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "tokenswap.so");
@@ -126,6 +111,29 @@ export async function establishVault(): Promise<void> {
   console.log(`Using vault ${vault.toBase58()}`);
 }
 
+export async function establishVaultAta(): Promise<void> {
+  vaultAta = await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mint,
+    vault,
+    true
+  );
+  console.log(`Using vaultAta ${vaultAta.address.toBase58()}`);
+}
+
+export async function mintToVaultAta(): Promise<void> {
+  await mintTo(
+    connection,
+    payer,
+    mint,
+    vaultAta.address,
+    payer,
+    1000 * LAMPORTS_PER_SOL
+  );
+  console.log(`Mint 1000 tokens to vaultAta ${vaultAta.address.toBase58()}`);
+}
+
 export async function initialize(): Promise<void> {
   const instructionData = Buffer.from(Uint8Array.of(0));
   const instruction = new TransactionInstruction({
@@ -160,145 +168,16 @@ export async function initialize(): Promise<void> {
     new Transaction().add(instruction),
     [payer]
   );
-  console.log(`visit \nhttps://explorer.solana.com/tx/${txSig}?cluster=custom`);
+  console.log(
+    `Finish initialize, more info: \nhttps://explorer.solana.com/tx/${txSig}?cluster=custom`
+  );
 }
 
-export async function legacy_initialize(): Promise<void> {
-  mintA = await createMint(
-    connection,
-    payer,
-    payer.publicKey,
-    payer.publicKey,
-    9
+export async function swapSolToToken(): Promise<void> {
+  const instructionData = Buffer.from(
+    Uint8Array.of(1, ...new BN(0.1 * LAMPORTS_PER_SOL).toArray("le", 8))
   );
 
-  payerAta = await getOrCreateAssociatedTokenAccount(
-    connection,
-    payer,
-    mintA,
-    payer.publicKey
-  );
-  await mintTo(
-    connection,
-    payer,
-    mintA,
-    payerAta.address,
-    payer,
-    1e9 * LAMPORTS_PER_SOL
-  );
-  console.log(
-    `mint ${1e9} tokens to payer Token Account Address ${payerAta.address.toBase58()}`
-  );
-
-  programAta = await getOrCreateAssociatedTokenAccount(
-    connection,
-    payer,
-    mintA,
-    programId
-  );
-  await mintTo(
-    connection,
-    payer,
-    mintA,
-    programAta.address,
-    payer,
-    2e9 * LAMPORTS_PER_SOL
-  );
-  console.log(
-    `mint ${2e9} tokens to program Token Account Address ${programAta.address.toBase58()}`
-  );
-
-  mintB = await createMint(
-    connection,
-    payer,
-    payer.publicKey,
-    payer.publicKey,
-    9
-  );
-
-  const [swapBankPda, bump] = await PublicKey.findProgramAddress(
-    [Buffer.from("swap_bank"), mintA.toBuffer(), mintB.toBuffer()],
-    programId
-  );
-  swapBank = swapBankPda;
-  console.log(`pda: ${swapBank.toBase58()}, bump: ${bump}`);
-
-  const sigSwapBank = await connection.requestAirdrop(
-    payer.publicKey,
-    1 * LAMPORTS_PER_SOL
-  );
-  await connection.confirmTransaction(sigSwapBank);
-  console.log(`send Sol to swapbank ${sigSwapBank}`);
-
-  swapBankAta = (
-    await getOrCreateAssociatedTokenAccount(
-      connection,
-      payer,
-      mintA,
-      swapBank,
-      true
-    )
-  ).address;
-  await mintTo(
-    connection,
-    payer,
-    mintA,
-    swapBankAta,
-    payer,
-    7e9 * LAMPORTS_PER_SOL
-  );
-  console.log(
-    `mint ${7e9} tokens to Swapbank Token Account Address ${swapBankAta.toBase58()}`
-  );
-
-  const [vaultAPda, vaultAPdaBump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("swap_bank"),
-      payer.publicKey.toBuffer(),
-      mintA.toBuffer(),
-      swapBank.toBuffer(),
-    ],
-    programId
-  );
-  vaultA = vaultAPda;
-  console.log(
-    `vaultAPda pda: ${vaultAPda.toBase58()}, vaultAPda bump: ${vaultAPdaBump}`
-  );
-
-  vaultAAta = await getOrCreateAssociatedTokenAccount(
-    connection,
-    payer,
-    mintA,
-    vaultA,
-    true
-  );
-  await mintTo(
-    connection,
-    payer,
-    mintA,
-    vaultAAta.address,
-    payer,
-    2e9 * LAMPORTS_PER_SOL
-  );
-  console.log(
-    `mint ${2e9} SOL to vautA Token Account Address ${vaultAAta.address.toBase58()}`
-  );
-
-  const [vaultBPda, vaultBPdaBump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("swap_bank"),
-      payer.publicKey.toBuffer(),
-      mintB.toBuffer(),
-      swapBank.toBuffer(),
-    ],
-    programId
-  );
-  vaultB = vaultBPda;
-  console.log(
-    `vaultBPda pda: ${vaultBPda.toBase58()}, vaultBPda bump: ${vaultBPdaBump}`
-  );
-
-  const instructionData = Buffer.from(Uint8Array.of(3));
   const instruction = new TransactionInstruction({
     keys: [
       {
@@ -307,29 +186,29 @@ export async function legacy_initialize(): Promise<void> {
         isWritable: true,
       },
       {
-        pubkey: swapBank,
+        pubkey: payerAta.address,
         isSigner: false,
         isWritable: true,
       },
       {
-        pubkey: mintA,
+        pubkey: programId,
         isSigner: false,
         isWritable: true,
       },
       {
-        pubkey: mintB,
+        pubkey: mint,
         isSigner: false,
         isWritable: true,
       },
       {
-        pubkey: vaultA,
+        pubkey: vault,
         isSigner: false,
-        isWritable: true, //double check
+        isWritable: true,
       },
       {
-        pubkey: vaultB,
+        pubkey: vaultAta.address,
         isSigner: false,
-        isWritable: true, //double check
+        isWritable: true,
       },
       {
         pubkey: TOKEN_PROGRAM_ID,
@@ -337,17 +216,7 @@ export async function legacy_initialize(): Promise<void> {
         isWritable: false,
       },
       {
-        pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
         pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
-        pubkey: SYSVAR_RENT_PUBKEY,
         isSigner: false,
         isWritable: false,
       },
@@ -362,7 +231,7 @@ export async function legacy_initialize(): Promise<void> {
     [payer]
   );
   console.log(
-    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+    `Finish swap Sol to token, more info:  \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
   );
 }
 
@@ -451,43 +320,6 @@ export async function swapTokenToSol(): Promise<void> {
     [payer]
   );
   console.log(
-    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
-  );
-}
-
-export async function swapSolToToken(): Promise<void> {
-  const instructionData = Buffer.from(
-    Uint8Array.of(1, ...new BN(1000).toArray("le", 8))
-  );
-
-  const instruction = new TransactionInstruction({
-    keys: [
-      {
-        pubkey: payer.publicKey,
-        isSigner: true,
-        isWritable: true,
-      },
-      {
-        pubkey: vault,
-        isSigner: false,
-        isWritable: true,
-      },
-      {
-        pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
-    ],
-    programId,
-    data: instructionData,
-  });
-
-  const swapSig = await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(instruction),
-    [payer]
-  );
-  console.log(
-    `visit \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+    `Finish swap Token to SOL, more info: \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
   );
 }

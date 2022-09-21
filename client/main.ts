@@ -3,8 +3,11 @@ import {
   establishConnection,
   establishMint,
   establishPayer,
+  establishPayerAta,
   establishVault,
+  establishVaultAta,
   initialize,
+  mintToVaultAta,
   swapSolToToken,
   swapTokenToSol,
 } from "./tokenswap";
@@ -13,8 +16,11 @@ async function main() {
   await establishConnection();
   await establishPayer();
   await establishMint();
+  await establishPayerAta();
   await checkProgramHashBeenDeployed();
   await establishVault();
+  await establishVaultAta();
+  await mintToVaultAta();
   await initialize();
   switch (process.argv.slice(2)[0]) {
     case "1":
