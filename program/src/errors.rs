@@ -28,6 +28,6 @@ impl From<TokenSwapError> for ProgramError {
 
 impl<T> DecodeError<T> for TokenSwapError {
     fn type_of() -> &'static str {
-        "SwapBank error"
+        "TokenSwap error"
     }
 }

@@ -1,21 +1,16 @@
-// use borsh::{BorshDeserialize, BorshSerialize};
-
-// #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
-
 use solana_program::program_error::ProgramError;
 use std::convert::TryInto;
 
 use crate::errors::TokenSwapError::InvalidInstruction;
 
-pub enum SwapBankIntruction {
+pub enum TokenSwapIntruction {
     Initialize,
     SwapSolToToken { data: u64 },
     SwapTokenToSol { data: u64 },
-    LegacyInitialize,
 }
 
 //function of enum
-impl SwapBankIntruction {
+impl TokenSwapIntruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         //check instruction type
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -29,7 +24,6 @@ impl SwapBankIntruction {
             2 => Ok(Self::SwapTokenToSol {
                 data: Self::unpack_data(rest)?,
             }),
-            3 => Ok(Self::LegacyInitialize),
             _ => Err(InvalidInstruction.into()),
         };
     }

@@ -1,5 +1,6 @@
 use crate::errors::TokenSwapError;
 use crate::state;
+use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -38,6 +39,15 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         &[payer.clone(), system_program.clone(), vault.clone()],
         &[&[b"vault", mint.key.as_ref(), &[vault_bump_seed]]],
     )?;
+
+    // * Allocate data to vault
+    let vault_info = state::Vault {
+        admin: *payer.key,
+        vault: *vault.key,
+        mint: *mint.key,
+    };
+    let vault_data = &mut *vault.data.borrow_mut();
+    vault_info.serialize(vault_data)?;
 
     Ok(())
 }

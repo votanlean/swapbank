@@ -259,7 +259,7 @@ export async function swapSolToToken(): Promise<void> {
     [payer]
   );
   console.log(
-    `Finish swap Sol to token, more info:  \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
+    `Finish swap Sol to Token, more info:  \nhttps://explorer.solana.com/tx/${swapSig}?cluster=custom`
   );
 }
 

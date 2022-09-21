@@ -4,6 +4,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
+    program_pack::Pack,
     pubkey::Pubkey,
 };
 use spl_associated_token_account::solana_program::system_instruction;
@@ -21,12 +22,18 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], lamports: u64) -> 
     let token_program_id = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
 
-    let (vault_pda, vault_bump_seedma) =
+    let (vault_pda, vault_bump_seed) =
         Pubkey::find_program_address(&[b"vault", mint.key.as_ref()], program_id);
     if vault_pda != *vault.key {
         msg!("Invalid vault account");
         return Err(TokenSwapError::InvalidAccountAddress.into());
     }
+
+    // let vault_data = spl_token::state::Account::unpack(&vault.data.borrow())?;
+    // if &vault_data.mint != mint.key {
+    //     msg!("Invalid mint token");
+    //     return Err(TokenSwapError::InvalidMint.into());
+    // }
 
     msg!("transfer SOL from payer to program");
     let take_sol_from_payer_ix = system_instruction::transfer(payer.key, vault.key, lamports);
